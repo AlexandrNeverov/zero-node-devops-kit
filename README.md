@@ -1,6 +1,20 @@
 # Zero Node DevOps Kit 🚀
 
-A fully automated starter kit to bootstrap a secure EC2 node, install DevOps tools, and configure Terraform backend on AWS (S3 + DynamoDB).
+
+## 🚀 Why This Matters
+
+Provisioning cloud infrastructure from scratch often requires several manual steps: launching an EC2 instance, installing essential tools (like Terraform and AWS CLI), configuring IAM roles, setting up a secure remote backend with S3 and DynamoDB, and managing SSH keys.
+
+**`zero-node-devops-kit` solves this problem with automation.**
+
+This toolkit provides a fully scripted, repeatable way to:
+
+- Launch a ready-to-use EC2 instance ("Zero Node") with an IAM role and public IP
+- Install a full suite of DevOps tools (Terraform, AWS CLI, Git, jq, htop, etc.)
+- Set up a secure Terraform remote backend using S3 (with versioning) and DynamoDB (for state locking)
+- Generate the required backend configuration block for Terraform
+
+Ideal for fast project bootstrapping, infrastructure experimentation, interview readiness, and DevOps skill showcasing.
 
 ---
 
@@ -80,5 +94,10 @@ MIT – free to use, modify, share.
 
 ## 👨‍💻 Author
 
-**Alexandr Neverov**  
+**Alex Neverov**  
 GitHub: [AlexandrNeverov](https://github.com/AlexandrNeverov)
+LinkedIn: https://www.linkedin.com/in/alexneverov/
+Web: https://neverov-it.com/ and https://neverov-science.com/
+Email: alex@neverov-it.com
+UpWork: https://www.upwork.com/freelancers/~01c616035669bbf379
+Phone: +1 (754) 236-57-15
