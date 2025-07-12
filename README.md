@@ -95,9 +95,11 @@ MIT – free to use, modify, share.
 ## 👨‍💻 Author
 
 **Alex Neverov**  
-GitHub: [AlexandrNeverov](https://github.com/AlexandrNeverov)
-LinkedIn: https://www.linkedin.com/in/alexneverov/
-Web: https://neverov-it.com/ and https://neverov-science.com/
-Email: alex@neverov-it.com
-UpWork: https://www.upwork.com/freelancers/~01c616035669bbf379
-Phone: +1 (754) 236-57-15
+DevOps Engineer · Cloud & Infrastructure Automation · Industry PhD
+
+- **GitHub:** [AlexandrNeverov](https://github.com/AlexandrNeverov)  
+- **LinkedIn:** [linkedin.com/in/alexneverov](https://www.linkedin.com/in/alexneverov)  
+- **Upwork:** [upwork.com/freelancers/~01c616035669bbf379](https://www.upwork.com/freelancers/~01c616035669bbf379)  
+- **Website:** [neverov-it.com](https://neverov-it.com) · [neverov-science.com](https://neverov-science.com)  
+- **Email:** [alex@neverov-it.com](mailto:alex@neverov-it.com)  
+- **Phone:** +1 (754) 236‑5715
