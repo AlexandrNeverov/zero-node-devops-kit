@@ -1,5 +1,6 @@
 # Zero Node DevOps Kit 🚀
 
+[![Terraform AWS Kit Demo](https://raw.githubusercontent.com/AlexandrNeverov/zero-node-devops-kit/main/image.png)](https://www.youtube.com/watch?v=_W2HxS0K1PE)
 
 ## 🚀 Why This Matters
 
