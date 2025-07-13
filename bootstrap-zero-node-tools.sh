@@ -1,208 +1,136 @@
 #!/bin/bash
 
-# Exit immediately if any command fails
 set -e
 
-# Utility function to log status of each step
-log_step() {
-  STEP="$1"
-  if "$2"; then
-    echo "$STEP - done"
-  else
-    echo "$STEP - failed"
-    exit 1
+# ----------------------------
+# CONFIGURATION
+# ----------------------------
+AWS_REGION="us-east-1"
+TIMESTAMP=$(date +%s)
+BUCKET_NAME="terraform-backend-zero-${TIMESTAMP}"
+DYNAMODB_TABLE="terraform-locks-zero-${TIMESTAMP}"
+
+# ----------------------------
+# STEP 1: Update & install dependencies (smart check)
+# ----------------------------
+echo "[1/6] Installing Terraform and dependencies..."
+
+sudo apt-get update -y
+
+# Only install missing packages
+ESSENTIAL_PACKAGES=(unzip curl gnupg software-properties-common)
+TO_INSTALL=()
+
+for pkg in "${ESSENTIAL_PACKAGES[@]}"; do
+  if ! dpkg -s "$pkg" &>/dev/null; then
+    TO_INSTALL+=("$pkg")
   fi
-}
+done
 
-# -------------------------------
-# STEP 0: Update and upgrade system packages
-# Ensures the latest security patches and updates are applied
-# -------------------------------
-echo "Step 0: System update & upgrade"
-if sudo apt-get update -y && sudo apt-get upgrade -y; then
-  echo "Step 0 - done"
+if [ ${#TO_INSTALL[@]} -gt 0 ]; then
+  echo "Installing: ${TO_INSTALL[*]}"
+  sudo apt-get install -y "${TO_INSTALL[@]}"
 else
-  echo "Step 0 - failed"
-  exit 1
+  echo "All essential packages already installed – skipping"
 fi
 
-# -------------------------------
-# STEP 1: Set system timezone to America/New_York
-# Standardizes logs and scheduling across deployments
-# -------------------------------
-echo "Step 1: Setting timezone to America/New_York"
-if sudo timedatectl set-timezone America/New_York; then
-  timedatectl
-  echo "Step 1 - done"
+# Add HashiCorp GPG key and repo
+curl -fsSL https://apt.releases.hashicorp.com/gpg | \
+  sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+  sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+sudo apt-get update -y
+sudo apt-get install -y terraform
+
+echo "Terraform version:"
+terraform -version
+
+# ----------------------------
+# STEP 2: Create S3 bucket
+# ----------------------------
+echo "[2/6] Creating S3 bucket: $BUCKET_NAME..."
+
+if [[ "$AWS_REGION" == "us-east-1" ]]; then
+  aws s3api create-bucket \
+    --bucket "$BUCKET_NAME" \
+    --region "$AWS_REGION"
 else
-  echo "Step 1 - failed"
-  exit 1
+  aws s3api create-bucket \
+    --bucket "$BUCKET_NAME" \
+    --region "$AWS_REGION" \
+    --create-bucket-configuration LocationConstraint="$AWS_REGION"
 fi
 
-# -------------------------------
-# STEP 2: Install unzip utility
-# Required for handling ZIP archives (e.g. AWS CLI install)
-# -------------------------------
-echo "Step 2: Installing unzip"
-if sudo apt-get install -y unzip; then
-  unzip -v
-  echo "Step 2 - done"
-else
-  echo "Step 2 - failed"
-  exit 1
-fi
+# ----------------------------
+# STEP 3: Enable versioning
+# ----------------------------
+echo "[3/6] Enabling versioning on bucket..."
 
-# -------------------------------
-# STEP 3: Install tree utility
-# Visual representation of directory structure
-# -------------------------------
-echo "Step 3: Installing tree"
-if sudo apt-get install -y tree; then
-  tree --version
-  echo "Step 3 - done"
-else
-  echo "Step 3 - failed"
-  exit 1
-fi
+aws s3api put-bucket-versioning \
+  --bucket "$BUCKET_NAME" \
+  --versioning-configuration Status=Enabled
 
-# -------------------------------
-# STEP 4: Install curl
-# Essential tool for interacting with HTTP APIs
-# -------------------------------
-echo "Step 4: Installing curl"
-if sudo apt-get install -y curl; then
-  curl --version
-  echo "Step 4 - done"
-else
-  echo "Step 4 - failed"
-  exit 1
-fi
+# ----------------------------
+# STEP 4: Create DynamoDB table
+# ----------------------------
+echo "[4/6] Creating DynamoDB table: $DYNAMODB_TABLE..."
 
-# -------------------------------
-# STEP 5: Install net-tools (netstat)
-# Helpful for checking port bindings and network diagnostics
-# -------------------------------
-echo "Step 5: Installing net-tools (netstat)"
-if sudo apt-get install -y net-tools; then
-  netstat -V || echo "netstat ready (no version output)"
-  echo "Step 5 - done"
-else
-  echo "Step 5 - failed"
-  exit 1
-fi
+aws dynamodb create-table \
+  --table-name "$DYNAMODB_TABLE" \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region "$AWS_REGION"
 
-# -------------------------------
-# STEP 6: Install Python 3 and pip
-# Required for DevOps scripting, CLI tools, and automation
-# -------------------------------
-echo "Step 6: Installing Python 3 and pip"
-if sudo apt-get install -y python3 python3-pip; then
-  python3 --version
-  pip3 --version
-  echo "Step 6 - done"
-else
-  echo "Step 6 - failed"
-  exit 1
-fi
+# ----------------------------
+# STEP 5: Wait for DynamoDB table to be active
+# ----------------------------
+echo "[5/6] Waiting for DynamoDB table to become ACTIVE..."
 
-# -------------------------------
-# STEP 7: Install AWS CLI (v2)
-# Enables programmatic access to AWS services via terminal
-# -------------------------------
-echo "Step 7: Installing AWS CLI"
-if curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -o awscliv2.zip && sudo ./aws/install; then
-  aws --version
-  echo "Step 7 - done"
-else
-  echo "Step 7 - failed"
-  exit 1
-fi
+# Wait for table to exist
+aws dynamodb wait table-exists \
+  --table-name "$DYNAMODB_TABLE" \
+  --region "$AWS_REGION"
 
-# -------------------------------
-# STEP 8: Install Git
-# Fundamental version control tool for managing infrastructure code
-# -------------------------------
-echo "Step 8: Installing Git"
-if sudo apt-get install -y git; then
-  git --version
-  echo "Step 8 - done"
-else
-  echo "Step 8 - failed"
-  exit 1
-fi
+# Poll until status becomes ACTIVE
+echo "Polling for table status = ACTIVE..."
+for i in {1..30}; do
+  STATUS=$(aws dynamodb describe-table \
+    --table-name "$DYNAMODB_TABLE" \
+    --region "$AWS_REGION" \
+    --query "Table.TableStatus" --output text)
 
-# -------------------------------
-# STEP 9: Install jq
-# Lightweight tool for parsing and manipulating JSON (e.g. AWS CLI output)
-# -------------------------------
-echo "Step 9: Installing jq"
-if sudo apt-get install -y jq; then
-  jq --version
-  echo "Step 9 - done"
-else
-  echo "Step 9 - failed"
-  exit 1
-fi
-
-# -------------------------------
-# STEP 10: Install htop
-# Advanced system monitoring tool (interactive, better than top)
-# -------------------------------
-echo "Step 10: Installing htop"
-if sudo apt-get install -y htop; then
-  htop --version
-  echo "Step 10 - done"
-else
-  echo "Step 10 - failed"
-  exit 1
-fi
-
-# -------------------------------
-# STEP 11: Install tmux
-# Terminal multiplexer - essential for remote DevOps session management
-# -------------------------------
-echo "Step 11: Installing tmux"
-if sudo apt-get install -y tmux; then
-  tmux -V
-  echo "Step 11 - done"
-else
-  echo "Step 11 - failed"
-  exit 1
-fi
-
-# -------------------------------
-# STEP 12: Generate SSH key for secure access
-# Used for connecting to EC2 and other remote services
-# -------------------------------
-echo "Step 12: Generating SSH key (if not exists)"
-SSH_KEY_PATH="$HOME/.ssh/zero-node-key"
-if [[ -f "$SSH_KEY_PATH" ]]; then
-  echo "SSH key already exists at $SSH_KEY_PATH - skipping"
-else
-  if ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_PATH" -N "" -C "zero-node-key"; then
-    echo "Step 12 - SSH key generated"
-  else
-    echo "Step 12 - failed to generate SSH key"
-    exit 1
+  if [[ "$STATUS" == "ACTIVE" ]]; then
+    echo "✅ Table status is ACTIVE"
+    break
   fi
-fi
 
-# -------------------------------
-# FINAL: Summary of installed tools and versions
-# Ensures auditability, transparency, and reproducibility
-# -------------------------------
+  echo "⏳ Current status: $STATUS – waiting..."
+  sleep 2
+done
+
+# ----------------------------
+# STEP 6: Final Output
+# ----------------------------
 echo ""
-echo "========= Installed Tools Summary ========="
-echo "Timezone: $(timedatectl | grep 'Time zone')"
-echo "Python 3: $(python3 --version 2>&1)"
-echo "pip3:     $(pip3 --version 2>&1)"
-echo "Git:      $(git --version 2>&1)"
-echo "Curl:     $(curl --version | head -n 1)"
-echo "Unzip:    $(unzip -v | head -n 1)"
-echo "Tree:     $(tree --version 2>&1)"
-echo "JQ:       $(jq --version 2>&1)"
-echo "AWS CLI:  $(aws --version 2>&1)"
-echo "htop:     $(htop --version 2>&1)"
-echo "tmux:     $(tmux -V 2>&1)"
-echo "SSH key:  ${SSH_KEY_PATH} / ${SSH_KEY_PATH}.pub"
-echo "==========================================="
+echo "✅ Terraform installed"
+echo "✅ S3 bucket created: $BUCKET_NAME"
+echo "✅ DynamoDB table created: $DYNAMODB_TABLE"
+echo ""
+echo "---------------------------------------------"
+echo "➡️ Use the following backend config in Terraform:"
+echo "---------------------------------------------"
+cat <<EOF
+terraform {
+  backend "s3" {
+    bucket         = "$BUCKET_NAME"
+    key            = "terraform.tfstate"
+    region         = "$AWS_REGION"
+    dynamodb_table = "$DYNAMODB_TABLE"
+    encrypt        = true
+  }
+}
+EOF
+echo "---------------------------------------------"
