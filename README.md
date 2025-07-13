@@ -66,6 +66,16 @@ bash setup-terraform-s3-dynamodb.sh
 curl -v https://raw.githubusercontent.com/AlexandrNeverov/zero-node-devops-kit/refs/heads/main/infra-bootstrap/aws-zero-node-bootstrap.sh | bash -
 ```
 
+6. ☁️ 📦 Install via cURL (bootstrap-zero-node-tools):
+```bash
+curl -v https://raw.githubusercontent.com/AlexandrNeverov/zero-node-devops-kit/refs/heads/main/bootstrap-zero-node-tools.sh | bash -
+```
+
+7. ☁️ 📦 Install via cURL (setup-terraform-s3-dynamodb):
+```bash
+curl -v https://raw.githubusercontent.com/AlexandrNeverov/zero-node-devops-kit/refs/heads/main/setup-terraform-s3-dynamodb.sh | bash -
+```
+
 ---
 
 ## 📦 Terraform Remote Backend Example
