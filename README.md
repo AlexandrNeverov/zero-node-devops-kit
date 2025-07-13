@@ -61,6 +61,11 @@ bash bootstrap-zero-node-tools.sh
 bash setup-terraform-s3-dynamodb.sh
 ```
 
+5. ☁️ 📦 Install via cURL (infra-bootstrap):
+```bash
+curl -v https://raw.githubusercontent.com/AlexandrNeverov/zero-node-devops-kit/refs/heads/main/infra-bootstrap/aws-zero-node-bootstrap.sh | bash -
+```
+
 ---
 
 ## 📦 Terraform Remote Backend Example
